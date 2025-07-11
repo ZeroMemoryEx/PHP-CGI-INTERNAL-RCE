@@ -28,4 +28,5 @@ https://github.com/user-attachments/assets/90abef27-28d0-4473-88e9-5e285a5cc667
 
 ##  Dependencies:
   * requests
-
+##
+* It never needed to be online… to be safe."
