@@ -15,7 +15,8 @@ REBIND_TARGET = "127.0.0.1" #
 PAYLOAD_TARGETS = [
     "192.168.204.133",
     "192.168.204.131", 
-    "192.168.204.134"
+    "192.168.204.134",
+    "127.0.0.1"
 ]
 
 with open("client.html", "r", encoding="utf-8") as f:
