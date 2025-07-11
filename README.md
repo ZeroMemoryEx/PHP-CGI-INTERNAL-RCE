@@ -25,7 +25,8 @@ https://github.com/user-attachments/assets/90abef27-28d0-4473-88e9-5e285a5cc667
   ```js
   const payload = `<?php system('calc');?>;echo 1337; die;`;
   ```
-
+* Also, you can modify the list of IPs. As we explained in the article, if you want to implement internal network scanning, you can use the JavaScript snippet I showed there. In this PoC, I’ll be using a predefined list of common IPs to keep it simple and fast
+  
 ##  Dependencies:
   * requests
 ##
