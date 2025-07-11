@@ -37,4 +37,4 @@
 https://github.com/user-attachments/assets/90abef27-28d0-4473-88e9-5e285a5cc667
 
 ##
-* It never needed to be online… to be safe."
+* It never needed to be offline… to be safe."
