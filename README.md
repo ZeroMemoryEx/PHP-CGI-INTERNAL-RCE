@@ -1,5 +1,10 @@
 # PHP-CGI-INTERNAL-RCE
 
+<div align="center">
+  <img width="400" height="400" alt="image" src="https://github.com/user-attachments/assets/cb74a312-7854-471f-ad94-11935f7ed4ae" />
+</div>
+
+##
 * This PoC demonstrates how an attacker can chain [Orange Tsai's](https://x.com/orange_8361) `CVE-2024-4577` with DNS rebinding to achieve remote code execution on internal network infrastructure directly through the victim’s web browser. By bypassing `Same-Origin Policy (SOP)` and exploiting vulnerable `PHP-CGI` instances running on `local XAMPP servers`, internal development environments, or corporate networks, this attack enables full code execution on systems never intended to be exposed to the internet.
 
 # BLOG 
