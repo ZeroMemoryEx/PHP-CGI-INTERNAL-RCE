@@ -2,12 +2,9 @@
 
 * This PoC demonstrates how an attacker can chain [Orange Tsai's](https://x.com/orange_8361) `CVE-2024-4577` with DNS rebinding to achieve remote code execution on internal network infrastructure directly through the victim’s web browser. By bypassing `Same-Origin Policy (SOP)` and exploiting vulnerable `PHP-CGI` instances running on `local XAMPP servers`, internal development environments, or corporate networks, this attack enables full code execution on systems never intended to be exposed to the internet.
 
-# VIDEO
+# BLOG 
 
-
-
-https://github.com/user-attachments/assets/90abef27-28d0-4473-88e9-5e285a5cc667
-
+* https://www.hackandhide.com/your-browser-is-now-your-enemy-delivering-php-rce-to-your-local-servers/
 
 # Setup
 
@@ -29,5 +26,10 @@ https://github.com/user-attachments/assets/90abef27-28d0-4473-88e9-5e285a5cc667
   
 ##  Dependencies:
   * requests
+
+# VIDEO
+
+https://github.com/user-attachments/assets/90abef27-28d0-4473-88e9-5e285a5cc667
+
 ##
 * It never needed to be online… to be safe."
